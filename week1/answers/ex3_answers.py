@@ -42,47 +42,85 @@ Conversation 3 (out of scope):
 # ── Conversation 1: Happy path ─────────────────────────────────────────────
 
 CONVERSATION_1_TRACE = """
-PASTE YOUR rasa shell TERMINAL OUTPUT HERE
-"""
+Bot loaded. Type a message and press enter (use '/stop' to exit): 
+Your input ->  calling to confirm a booking                       
+How many guests are you confirming for tonight's event?
+Your input ->  160 guests                                         
+And how many of those guests will need vegan meals?
+Your input ->  about 50 need vegan                                
+What deposit amount in GBP are you proposing to secure the booking?
+Your input ->  £200 deposit                                       
+Thank you — booking confirmed. 160 guests, 50 requiring vegan meals, 
+£200 deposit accepted. I'll send written confirmation to the organiser shortly.
+Is there anything else I can help you with?
+Your input ->                  """
 
-CONVERSATION_1_OUTCOME = "FILL_ME_IN"   # "confirmed" or "escalated"
+CONVERSATION_1_OUTCOME = "confirmed"   # "confirmed" or "escalated"
 
 # ── Conversation 2: Deposit too high ───────────────────────────────────────
 
 CONVERSATION_2_TRACE = """
-PASTE YOUR rasa shell TERMINAL OUTPUT HERE
-"""
+Bot loaded. Type a message and press enter (use '/stop' to exit): 
+Your input ->  calling to confirm a booking                       
+How many guests are you confirming for tonight's event?
+Your input ->  160 guests                                         
+And how many of those guests will need vegan meals?
+Your input ->  about 50 need vegan 
+What deposit amount in GBP are you proposing to secure the booking?
+Your input ->  £500 deposit                                       
+I need to check one thing with the organiser before I can confirm. 
+The issue is: a deposit of £500 exceeds the organiser's authorised 
+limit of £300. Can I call you back within 15 minutes?
+Is there anything else I can help you with?
+Your input ->    """
 
-CONVERSATION_2_OUTCOME = "FILL_ME_IN"   # "confirmed" or "escalated"
-CONVERSATION_2_REASON  = "FILL_ME_IN"   # the reason the agent gave for escalating
+CONVERSATION_2_OUTCOME = "escalated"   # "confirmed" or "escalated"
+CONVERSATION_2_REASON  = "The issue is: a deposit of £500 exceeds the organiser's authorised limit of £300"   # the reason the agent gave for escalating
 
 # ── Conversation 3: Out of scope ───────────────────────────────────────────
 
 CONVERSATION_3_TRACE = """
-PASTE YOUR rasa shell TERMINAL OUTPUT HERE
-"""
+Bot loaded. Type a message and press enter (use '/stop' to exit): 
+Your input ->  calling to confirm a booking                       
+How many guests are you confirming for tonight's event?
+Your input ->  160 guests
+And how many of those guests will need vegan meals?
+Your input ->  can you arrange parking for the speakers?          
+I'm sorry, I'm not trained to help with that.
+I can only help with confirming tonight's venue booking. For anything else, 
+please contact the event organiser directly.
+Would you like to continue with confirm booking?
+Your input ->"""
 
 # Describe what CALM did after the out-of-scope message. Min 20 words.
 CONVERSATION_3_WHAT_HAPPENED = """
-FILL ME IN
+I think that upon receiving the out of scope message, CALM
+triggers the handle_out_of_scope flow and returns the associated
+message to the user.
 """
 
 # Compare Rasa CALM's handling of the out-of-scope request to what
 # LangGraph did in Exercise 2 Scenario 3. Min 40 words.
 OUT_OF_SCOPE_COMPARISON = """
-FILL ME IN
-"""
+In exercise 2 scenario 3, the LangGraph agent admitted defeat ('I
+cannot perform this task...') after 'inventing' a function that didn't
+exist and call it. Here the workflow is more measured and the agent 
+informs the user of its limitations and the need to escelate if the 
+user needs help with parking / something else. The communication is 
+clearer here."""
 
 # ── Task B: Cutoff guard ───────────────────────────────────────────────────
 
-TASK_B_DONE = None   # True or False
+TASK_B_DONE = True   # True or False
 
 # List every file you changed.
-TASK_B_FILES_CHANGED = []
+TASK_B_FILES_CHANGED = ['exercise3_rasa/actions/actions.py']
 
 # How did you test that it works? Min 20 words.
 TASK_B_HOW_YOU_TESTED = """
-FILL ME IN
+I tested it by changing the if statement in actions.py line 121
+to 'if True:' to force the escalation. I then restarted the server
+and went through the conversation again.
 """
 
 # ── CALM vs Old Rasa ───────────────────────────────────────────────────────
@@ -101,7 +139,15 @@ FILL ME IN
 # Min 30 words.
 
 CALM_VS_OLD_RASA = """
-FILL ME IN
+The LLM now handles the elements of the interaction that have nuance
+so we are leveraging the LLM's ability to interpret natural language 
+and to extract the data from the user's message. We gain a more flexible
+and wide reaching interpretation of the input. When the model needs to
+make a decision that is more discrete / black and white, we revert
+to using the cold hard logic of Python as this is sufficient. We use
+both approaches (LLM and Python) when it suits their strengths. The downside
+of this combined approach is the usual risk of hallucination or relinquishing
+control to the LLM.
 
 Think about:
 - What does the LLM handle now that Python handled before?
@@ -120,7 +166,15 @@ Think about:
 # Min 40 words.
 
 SETUP_COST_VALUE = """
-FILL ME IN
+In return for the Rasa CALM setup costs, we get a more tightly defined
+and rigid workflow that doesn't have the LangGraph flexibility. In the 
+context of managing a booking such as this one, this is a good thing 
+as it forces the agent to stick to the script and lessens the risk of 
+hallucination or of looping indefinitely. There are circumstances where
+the creativity of LangGraph might be a benefit such as when it needs
+to improvise a response to a situation it hasn't been trained on but
+for this use case, I think the additional costs are worth it to keep
+the process on rails.
 
 Be specific. What can the Rasa CALM agent NOT do that LangGraph could?
 Is that a feature or a limitation for the confirmation use case?

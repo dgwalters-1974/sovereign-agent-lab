@@ -86,11 +86,19 @@ TOOLS = [
 
 # Build the agent once at module load time.
 # Rebuilding it on every call would be wasteful.
-_agent = create_react_agent(llm, TOOLS)
+_agent = create_react_agent(llm, TOOLS, prompt=(
+    """You are a research assistant.
+    Always use the available tools to gather
+    information before responding.
+    Never answer from memory alone.
+    Work through tasks step by step, 
+    calling one tool at a time."""
+)
+)
 
 
 # ─── Public interface ─────────────────────────────────────────────────────────
-
+# amended this function as the code wasn't working
 def run_research_agent(task: str, max_turns: int = 8) -> dict:
     """
     Run the research agent on a task and return a structured result.
@@ -113,6 +121,11 @@ def run_research_agent(task: str, max_turns: int = 8) -> dict:
         {"messages": [("user", task)]},
         config={"recursion_limit": max_turns * 2},  # LangGraph uses steps, not turns
     )
+    
+    for m in result["messages"]:
+      print("DEBUG:", type(m).__name__,
+  "tool_calls:", getattr(m, "tool_calls",
+  None), "content:", repr(m.content)[:100])
 
     tool_calls_made = []
     full_trace      = []
@@ -121,18 +134,24 @@ def run_research_agent(task: str, max_turns: int = 8) -> dict:
     for m in result["messages"]:
         role    = getattr(m, "type", "unknown")
         content = m.content
-
-        # Tool-call messages have structured list content
-        if isinstance(content, list):
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "tool_use":
-                    entry = {
-                        "tool": block["name"],
-                        "args": block.get("input", {}),
-                    }
-                    tool_calls_made.append(entry)
-                    full_trace.append({"role": "tool_call", **entry})
-            continue
+        tools = getattr(m, "tool_calls", None)
+        # This bit deals with OpenAI style api
+        if tools:
+            for x in tools:
+                entry = {"tool": x["name"], "args": x.get("args", {})}
+                tool_calls_made.append(entry)
+                full_trace.append({"role": "tool_call", **entry})
+            # This bit deals with Anthropic style api
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                        entry = {
+                            "tool": block["name"],
+                            "args": block.get("input", {}),
+                        }
+                        tool_calls_made.append(entry)
+                        full_trace.append({"role": "tool_call", **entry})
+                continue
 
         if content:
             full_trace.append({"role": role, "content": str(content)})

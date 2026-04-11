@@ -44,6 +44,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from pydantic import create_model, Field
 
 load_dotenv()
 
@@ -93,10 +94,26 @@ async def discover_tools(server_script: str) -> list:
             raw   = await session.list_tools()
             tools = []
             for t in raw.tools:
+                # Build a Pydantic model from the MCP tool's inputSchema
+                # so LangChain knows what parameters to pass
+                type_map = {"integer": int, "boolean": bool, "string": str, "number": float}
+                fields = {}
+                schema = t.inputSchema or {}
+                props = schema.get("properties", {})
+                required = schema.get("required", [])
+                for pname, pinfo in props.items():
+                    ptype = type_map.get(pinfo.get("type", "string"), str)
+                    if pname in required:
+                        fields[pname] = (ptype, Field(description=pinfo.get("description", "")))
+                    else:
+                        fields[pname] = (ptype, Field(default=None, description=pinfo.get("description", "")))
+                args_model = create_model(f"{t.name}Args", **fields) if fields else None
+
                 lc_tool = StructuredTool.from_function(
                     func=_make_mcp_caller(t.name, server_script),
                     name=t.name,
                     description=t.description or f"MCP tool: {t.name}",
+                    args_schema=args_model,
                 )
                 tools.append(lc_tool)
             return tools, [t.name for t in raw.tools]
@@ -109,6 +126,11 @@ def extract_trace(result: dict) -> list:
     for m in result["messages"]:
         role    = getattr(m, "type", "unknown")
         content = m.content
+        tools   = getattr(m, "tool_calls", None)
+        if tools:
+            for x in tools:
+                trace.append({"role": "tool_call", "tool": x["name"],
+                              "args": x.get("args", {})})
         if isinstance(content, list):
             for block in content:
                 if isinstance(block, dict) and block.get("type") == "tool_use":
@@ -145,7 +167,12 @@ async def main() -> None:
     tools, tool_names = await discover_tools(SERVER_SCRIPT)
     print(f"\n  Discovered {len(tools)} tools: {tool_names}")
 
-    agent  = create_react_agent(llm, tools)
+    agent  = create_react_agent(llm, tools, prompt=(
+      """You are a research assistant. Always usethe available 
+      tools to gather information before responding. Never 
+      answer from memory alone. Work through tasks step by step, calling
+      one tool at a time."""
+  )) # added a prompt to get structured output from the agent
     output = {"server_script": SERVER_SCRIPT, "tools_discovered": tool_names, "queries": {}}
 
     # ── Query 1: search + detail fetch ────────────────────────────────────────
@@ -153,7 +180,7 @@ async def main() -> None:
     print(f"\n{'=' * 65}")
     print("  Query 1 — Search + Detail Fetch")
     print(f"{'=' * 65}\n")
-    r1     = agent.invoke({"messages": [("user", q1)]})
+    r1     = agent.invoke({"messages": [("user", q1)]}, config={"recursion_limit": 20})
     trace1 = extract_trace(r1)
     print_trace(trace1)
     output["queries"]["query_1"] = {"query": q1, "trace": trace1}
@@ -163,7 +190,7 @@ async def main() -> None:
     print(f"\n{'=' * 65}")
     print("  Query 2 — Impossible Constraint")
     print(f"{'=' * 65}\n")
-    r2     = agent.invoke({"messages": [("user", q2)]})
+    r2     = agent.invoke({"messages": [("user", q2)]}, config={"recursion_limit": 20})
     trace2 = extract_trace(r2)
     print_trace(trace2)
     output["queries"]["query_2"] = {"query": q2, "trace": trace2}

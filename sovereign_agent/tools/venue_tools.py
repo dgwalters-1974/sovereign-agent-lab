@@ -37,6 +37,9 @@ import json
 import requests
 from langchain_core.tools import tool
 
+from openai import OpenAI
+import os
+
 # ─── Venue database ───────────────────────────────────────────────────────────
 # In Week 2 this gets replaced with a real web search.
 # For now, it's a small hardcoded database so we can focus on the agent loop.
@@ -212,14 +215,35 @@ def generate_event_flyer(venue_name: str, guest_count: int, event_theme: str) ->
     #
     # When implemented, the mechanical check in grade.py will pass automatically.
     # ──────────────────────────────────────────────────────────────────────────
-
+    client = OpenAI(
+        base_url="https://api.tokenfactory.nebius.com/v1/",
+        api_key=os.getenv("NEBIUS_KEY"),
+    )
+    
     prompt = (
         f"Professional event flyer for {event_theme} at {venue_name}, "
         f"Edinburgh. {guest_count} guests."
+        f"Warm lighting, Scottish architecture background, clean modern typography."
     )
-    return json.dumps({
-        "success": False,
-        "error": "STUB — see TODO in sovereign_agent/tools/venue_tools.py",
-        "prompt_used": prompt,
-        "image_url": "",
-    })
+    
+    try: 
+        response = client.images.generate(
+            model="black-forest-labs/flux-schnell",
+            prompt=prompt,
+            n=1,
+        )
+        url = response.data[0].url
+        return json.dumps({
+                "success": True,
+                "error": "",
+                "prompt_used": prompt,
+                "image_url": url,
+            })  
+        
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "error": str(e),
+            "prompt_used": prompt,
+            "image_url": "",
+        })

@@ -234,6 +234,8 @@ def main() -> None:
 
     a_all = all(r["correct"] for r in results_a.values())
     b_all = all(r["correct"] for r in results_b.values())
+    print(a_all)
+    print(b_all)
     run_c = a_all and b_all
 
     results_c = {}
