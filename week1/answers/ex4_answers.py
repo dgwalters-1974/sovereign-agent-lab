@@ -64,5 +64,15 @@ Based on the work herein, the research should be performed by the LangGraph agen
 the call should be performed by the Rasa agent. This is because the LangGraph agent is
 more flexible and likely can handle the changing behaviour of the venues (as they get
 full closer to event time, bank holidays etc.), while the Rasa agent is more structured
-and can handle the 'business' exchange in a more predictable way.
+and can handle the 'business' exchange in a more predictable way. The ability of LangGraph
+to respond to dynamic failures is demonstrated by the pivot in Task C Scenario 1 when the
+agent chooses check another venue when the Bow Bar is full. This behaviour is backed up by
+Task C Scenario 2 when the agent admits it cannot find a venue for 300 people with vegan options
+and gives the user feedback to that effect. Similarly, the Rasa agent's more rigid behaviour is
+demonstrated by its ability to implement a cutoff at 16.45pm - this is python coded
+choice leaving no room for ambiguity.
+Swapping feels wrong because the LangGraph agent has shown itself to hallucinate (calling non 
+existent tools for example) which is a behaviour that we definitely don't want in a research agent
+while Rasa would be poor at research tasks as it cannot pivot so easily when dealing with a 
+changing environment.
 """
