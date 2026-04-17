@@ -72,7 +72,7 @@ and gives the user feedback to that effect. Similarly, the Rasa agent's more rig
 demonstrated by its ability to implement a cutoff at 16.45pm - this is python coded
 choice leaving no room for ambiguity.
 Swapping feels wrong because the LangGraph agent has shown itself to hallucinate (calling non 
-existent tools for example) which is a behaviour that we definitely don't want in a research agent
+existent tools for example) hich is a behaviour we definitely don't want on a confirmation call
 while Rasa would be poor at research tasks as it cannot pivot so easily when dealing with a 
 changing environment.
 """
